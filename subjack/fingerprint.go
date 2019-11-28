@@ -13,13 +13,14 @@ type Fingerprints struct {
 	Cname       []string `json:"cname"`
 	Fingerprint []string `json:"fingerprint"`
 	Nxdomain    bool     `json:"nxdomain"`
+	statusCode  bool     `json:statusCode`
 }
 
 /*
 * Triage step to check whether the CNAME matches
 * the fingerprinted CNAME of a vulnerable cloud service.
  */
-func VerifyCNAME(subdomain string, config []Fingerprints) (match bool) {
+func VerifyCNAME(subdomain string, config []Fingerprints) (match bool,cnameMatch string) {
 	cname := resolve(subdomain)
 	match = false
 
@@ -28,12 +29,13 @@ VERIFY:
 		for c := range config[n].Cname {
 			if strings.Contains(cname, config[n].Cname[c]) {
 				match = true
+				cnameMatch = config[n].Service
 				break VERIFY
 			}
 		}
 	}
 
-	return match
+	return match,cnameMatch
 }
 
 func detect(url, output string, ssl, verbose, manual bool, timeout int, config []Fingerprints) {

@@ -15,9 +15,10 @@ func (s *Subdomain) dns(o *Options) {
 	if o.All {
 		detect(s.Url, o.Output, o.Ssl, o.Verbose, o.Manual, o.Timeout, config)
 	} else {
-		if VerifyCNAME(s.Url, config) {
-			cname := fmt.Sprintf("[Cname but notvulnerable] %s\n", s.Url)
-			fmt.Printf(cname)
+		ifCNAME, service := VerifyCNAME(s.Url, config)
+		if (ifCNAME) {
+			cname := fmt.Sprintf("[Cname but notvulnerable] %s", s.Url)
+			fmt.Printf(service + "  " + cname +"\n")
 			detect(s.Url, o.Output, o.Ssl, o.Verbose, o.Manual, o.Timeout, config)
 		}
 
