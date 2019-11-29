@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"github.com/proabiral/subjack/subjack"
+	"./subjack"
 )
 
 func main() {

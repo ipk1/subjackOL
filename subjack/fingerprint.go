@@ -9,11 +9,12 @@ import (
 )
 
 type Fingerprints struct {
-	Service     string   `json:"service"`
-	Cname       []string `json:"cname"`
-	Fingerprint []string `json:"fingerprint"`
-	Nxdomain    bool     `json:"nxdomain"`
-	statusCode  bool     `json:statusCode`
+	Service    		 	string   `json:"service"`
+	Cname       		[]string `json:"cname"`
+	Fingerprint 		[]string `json:"fingerprint"`
+	FingerprintHeader   []string `json:"fingerprintHeader"`
+	Nxdomain    		bool     `json:"nxdomain"`
+	StatusCode  		[]int    `json:"statusCode"`
 }
 
 /*
@@ -78,7 +79,9 @@ func detect(url, output string, ssl, verbose, manual bool, timeout int, config [
 * be taken over.
  */
 func Identify(subdomain string, forceSSL, manual bool, timeout int, fingerprints []Fingerprints) (service string) {
-	body := get(subdomain, forceSSL, timeout)
+	response := get(subdomain, forceSSL, timeout)
+
+	body := response.Body()
 
 	cname := resolve(subdomain)
 
@@ -126,6 +129,24 @@ IDENTIFY:
 				break
 			}
 		}
+
+		for n := range fingerprints[f].FingerprintHeader {
+			if bytes.Contains(response.Header.Header(), []byte(fingerprints[f].FingerprintHeader[n])) {
+				service = strings.ToUpper(fingerprints[f].Service)
+				break
+			}
+		}
+
+		for n := range fingerprints[f].StatusCode {
+			if fingerprints[f].StatusCode[n] == response.StatusCode() {
+				service = strings.ToUpper(fingerprints[f].Service)
+				break
+			}
+		}
+
+
+
+
 	}
 
 	return service

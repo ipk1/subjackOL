@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func get(url string, ssl bool, timeout int) (body []byte) {
+func get(url string, ssl bool, timeout int) (response *fasthttp.Response) {
 	req := fasthttp.AcquireRequest()
 	req.SetRequestURI(site(url, ssl))
 	req.Header.Add("Connection", "close")
@@ -15,14 +15,21 @@ func get(url string, ssl bool, timeout int) (body []byte) {
 	client := &fasthttp.Client{TLSConfig: &tls.Config{InsecureSkipVerify: true}}
 	client.DoTimeout(req, resp, time.Duration(timeout)*time.Second)
 
-	return resp.Body()
+	//fmt.Println(url,resp.StatusCode())
+	//fmt.Println(url, string(resp.Header.Header()))
+
+	return resp
+	//also return headers here..
+	//also return response status code here ...
+	// or return entire response object
+
 }
 
-func https(url string, ssl bool, timeout int) (body []byte) {
+func https(url string, ssl bool, timeout int) (response *fasthttp.Response) {
 	newUrl := "https://" + url
-	body = get(newUrl, ssl, timeout)
+	response = get(newUrl, ssl, timeout)
 
-	return body
+	return response
 }
 
 func site(url string, ssl bool) (site string) {
