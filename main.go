@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"./subjack"
+	"github.com/proabiral/subjack/subjack"
 )
 
 func main() {
@@ -25,6 +25,7 @@ func main() {
 	flag.StringVar(&o.Output, "o", "", "Output results to file (Subjack will write JSON if file ends with '.json').")
 	flag.StringVar(&o.Config, "c", defaultConfig, "Path to configuration file.")
 	flag.BoolVar(&o.Manual, "m", false, "Flag the presence of a dead record, but valid CNAME entry.")
+	flag.BoolVar(&o.NoCName, "noCName", false, "Do not show when CNAME matches")
 	flag.Parse()
 
 	flag.Usage = func() {

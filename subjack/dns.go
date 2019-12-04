@@ -17,8 +17,11 @@ func (s *Subdomain) dns(o *Options) {
 	} else {
 		ifCNAME, serviceCNAMEmatch := VerifyCNAME(s.Url, config)
 		if (ifCNAME) {
-			cname := fmt.Sprintf("[Cname but notvulnerable] %s", s.Url)
-			fmt.Printf(serviceCNAMEmatch + "  " + cname +"\n")
+			if !o.NoCName { // do not print when noCName is present
+				cname := fmt.Sprintf("[Cname but notvulnerable] %s", s.Url)
+				fmt.Printf(serviceCNAMEmatch + "  " + cname +"\n")
+				}
+
 			detect(s.Url, o.Output, o.Ssl, o.Verbose, o.Manual, o.Timeout, config,serviceCNAMEmatch, false) // passing false if -a option not passed
 		}
 

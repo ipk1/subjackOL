@@ -94,15 +94,15 @@ func Identify(subdomain string, forceSSL, manual bool, timeout int, fingerprints
 	nx := nxdomain(subdomain)
 
 
-	if !isAll{ // when dns replace fingerprint with only matching cname
-		myfingerPrint:=make([]Fingerprints, 1)
+	if !isAll{ // when dns
+		myfingerPrint:=make([]Fingerprints, 1) // create new []Fingerprints to place fingerprint whose cname matches
 		for f := range fingerprints {
 			if fingerprints[f].Service == serviceCNAMEmatch{
 				myfingerPrint[0]=fingerprints[f]
 				break
 			}
 		}
-		fingerprints=myfingerPrint
+		fingerprints=myfingerPrint //replace fingerprints with only matching cname
 	}
 
 IDENTIFY:
