@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-
 	"github.com/haccer/available"
 )
 
@@ -15,12 +14,14 @@ type Fingerprints struct {
 	FingerprintHeader   []string `json:"fingerprintHeader"`
 	Nxdomain    		bool     `json:"nxdomain"`
 	StatusCode  		[]int    `json:"statusCode"`
+	IgnoreOptionA  bool     `json:"ignoreOptionA"`
 }
 
 /*
 * Triage step to check whether the CNAME matches
 * the fingerprinted CNAME of a vulnerable cloud service.
  */
+
 func VerifyCNAME(subdomain string, config []Fingerprints) (match bool,cnameMatch string) {
 	cname := resolve(subdomain)
 	match = false
@@ -39,8 +40,8 @@ VERIFY:
 	return match,cnameMatch
 }
 
-func detect(url, output string, ssl, verbose, manual bool, timeout int, config []Fingerprints) {
-	service := Identify(url, ssl, manual, timeout, config)
+func detect(url, output string, ssl, verbose, manual bool, timeout int, config []Fingerprints,serviceCNAMEmatch string, isAll bool) {
+	service := Identify(url, ssl, manual, timeout, config,serviceCNAMEmatch, isAll)
 
 	if service != "" {
 		result := fmt.Sprintf("[%s] %s\n", service, url)
@@ -78,7 +79,7 @@ func detect(url, output string, ssl, verbose, manual bool, timeout int, config [
 * is attached to a vulnerable cloud service and able to
 * be taken over.
  */
-func Identify(subdomain string, forceSSL, manual bool, timeout int, fingerprints []Fingerprints) (service string) {
+func Identify(subdomain string, forceSSL, manual bool, timeout int, fingerprints []Fingerprints,serviceCNAMEmatch string, isAll bool) (service string) {
 	response := get(subdomain, forceSSL, timeout)
 
 	body := response.Body()
@@ -92,62 +93,69 @@ func Identify(subdomain string, forceSSL, manual bool, timeout int, fingerprints
 	service = ""
 	nx := nxdomain(subdomain)
 
+
+	if !isAll{ // when dns replace fingerprint with only matching cname
+		myfingerPrint:=make([]Fingerprints, 1)
+		for f := range fingerprints {
+			if fingerprints[f].Service == serviceCNAMEmatch{
+				myfingerPrint[0]=fingerprints[f]
+				break
+			}
+		}
+		fingerprints=myfingerPrint
+	}
+
 IDENTIFY:
 	for f := range fingerprints {
+		if !(isAll && fingerprints[f].IgnoreOptionA){ // does not check when -a option is set and ignore is true...
+			// Begin subdomain checks if the subdomain returns NXDOMAIN
+			if nx {
+				// Check if we can register this domain.
+				dead := available.Domain(cname)
+				if dead {
+					service = "DOMAIN AVAILABLE - " + cname
+					break IDENTIFY
+				}
 
-		// Begin subdomain checks if the subdomain returns NXDOMAIN
-		if nx {
-
-			// Check if we can register this domain.
-			dead := available.Domain(cname)
-			if dead {
-				service = "DOMAIN AVAILABLE - " + cname
-				break IDENTIFY
-			}
-
-			// Check if subdomain matches fingerprinted cname
-			if fingerprints[f].Nxdomain {
-				for n := range fingerprints[f].Cname {
-					if strings.Contains(cname, fingerprints[f].Cname[n]) {
-						service = strings.ToUpper(fingerprints[f].Service)
-						break IDENTIFY
+				// Check if subdomain matches fingerprinted cname
+				if fingerprints[f].Nxdomain {
+					for n := range fingerprints[f].Cname {
+						if strings.Contains(cname, fingerprints[f].Cname[n]) {
+							service = strings.ToUpper(fingerprints[f].Service)
+							break IDENTIFY
+						}
 					}
+				}
+
+				// Option to always print the CNAME and not check if it's available to be registered.
+				if manual && !dead && cname != "" {
+					service = "DEAD DOMAIN - " + cname
+					break IDENTIFY
 				}
 			}
 
-			// Option to always print the CNAME and not check if it's available to be registered.
-			if manual && !dead && cname != "" {
-				service = "DEAD DOMAIN - " + cname
-				break IDENTIFY
+			// Check if body matches fingerprinted response
+			for n := range fingerprints[f].Fingerprint {
+				if bytes.Contains(body, []byte(fingerprints[f].Fingerprint[n])) {
+					service = strings.ToUpper(fingerprints[f].Service)
+					break
+				}
 			}
-		}
 
-		// Check if body matches fingerprinted response
-		for n := range fingerprints[f].Fingerprint {
-			if bytes.Contains(body, []byte(fingerprints[f].Fingerprint[n])) {
-				service = strings.ToUpper(fingerprints[f].Service)
-				break
+			for n := range fingerprints[f].FingerprintHeader {
+				if bytes.Contains(response.Header.Header(), []byte(fingerprints[f].FingerprintHeader[n])) {
+					service = strings.ToUpper(fingerprints[f].Service)
+					break
+				}
 			}
-		}
 
-		for n := range fingerprints[f].FingerprintHeader {
-			if bytes.Contains(response.Header.Header(), []byte(fingerprints[f].FingerprintHeader[n])) {
-				service = strings.ToUpper(fingerprints[f].Service)
-				break
+			for n := range fingerprints[f].StatusCode {
+				if fingerprints[f].StatusCode[n] == response.StatusCode() {
+					service = strings.ToUpper(fingerprints[f].Service)
+					break
+				}
 			}
-		}
-
-		for n := range fingerprints[f].StatusCode {
-			if fingerprints[f].StatusCode[n] == response.StatusCode() {
-				service = strings.ToUpper(fingerprints[f].Service)
-				break
-			}
-		}
-
-
-
-
 	}
-
+}
 	return service
 }
